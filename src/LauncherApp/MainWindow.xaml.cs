@@ -17,6 +17,9 @@ public partial class MainWindow : Window
     // Phase 2: ZeroTier — created lazily after token is confirmed.
     private ZeroTierService? _zeroTier;
 
+    // Phase 4: auto-update check on launch.
+    private readonly UpdateService _updater = new();
+
     public MainWindow()
     {
         InitializeComponent();
@@ -45,7 +48,26 @@ public partial class MainWindow : Window
         await ConnectToPresenceServerAsync();
         UpdateTokenSetupVisibility();
         _gameLauncher.DetectInstall();
+
+        // Check for updates in the background — never blocks startup.
+        _ = CheckForUpdateAsync();
     }
+
+    private async Task CheckForUpdateAsync()
+    {
+        var info = await _updater.CheckForUpdateAsync();
+        if (info is null) return;
+
+        var result = MessageBox.Show(
+            $"RocketLaunch {info.Version} is available!\n\nDownload and install now?",
+            "Update Available",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Information);
+
+        if (result == MessageBoxResult.Yes)
+            await _updater.DownloadAndInstallAsync(info);
+    }
+
 
     private async Task ConnectToPresenceServerAsync()
     {

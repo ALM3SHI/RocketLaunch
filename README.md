@@ -1,83 +1,121 @@
 # RocketLaunch
 
-لانشر مخصص للعب Rocket League Workshop maps مع أصدقائك عبر الإنترنت بدون Hamachi أو Radmin VPN.
+**لانشر مخصص للعب Rocket League Workshop maps مع أصدقائك عبر الإنترنت — بدون Hamachi أو Radmin VPN.**
 
 ---
 
 ## كيف يشتغل
 
 ```
-أنت                           صاحبك
- │                               │
- │  يفتح LauncherApp             │  يفتح LauncherApp
- │  يضغط "Host Game"             │
- │  ← ينشئ شبكة ZeroTier         │
- │  ← يرسل دعوة عبر              │  ← يستقبل الدعوة
- │    PresenceServer             │  ← ينضم للشبكة تلقائيًا
- │                               │
- │  كلاكما على نفس               │
- │  LAN افتراضي (10.x.x.x)      │
- │                               │
- │  Launch Rocket League         │  Launch Rocket League
- │  → LAN Match                  │  → يشوف المباراة في القائمة
+أنت (Host)                       صاحبك (Guest)
+───────────                       ──────────────
+يفتح RocketLaunch                 يفتح RocketLaunch
+يضغط [Host Game]
+   └─ ينشئ شبكة ZeroTier
+   └─ يرسل دعوة                ──► يستقبل الدعوة ويضغط Yes
+                                    └─ ينضم للشبكة تلقائياً
+
+كلاكما على نفس LAN افتراضي (10.x.x.x)
+
+يضغطان [Launch Rocket League]
+   └─ اللعبة تفتح               ──► اللعبة تفتح
+   └─ يكوّن LAN Match               └─ يشوف المباراة في القائمة
 ```
 
 ---
 
-## المتطلبات
+## المتطلبات (على **كلا** الجهازين)
 
-### على **كلا** الجهازين:
+| المتطلب | الرابط | ملاحظة |
+|---------|--------|--------|
+| **ZeroTier One** | [zerotier.com/download](https://www.zerotier.com/download/) | يجب تشغيله كخدمة |
+| **ZeroTier Central account** | [my.zerotier.com](https://my.zerotier.com) | مجاني — لإنشاء API token |
+| **.NET 8 Runtime** | [dotnet.microsoft.com](https://dotnet.microsoft.com/download/dotnet/8.0) | مطلوب لتشغيل التطبيق |
+| **Rocket League** | Steam أو Epic | |
 
-1. **[ZeroTier One](https://www.zerotier.com/download/)** — ثبّته وابدأ الخدمة
-   ```
-   # تحقق إنه شغال (في PowerShell كـ Admin):
-   zerotier-cli info
-   # يفترض يطلع: 200 info <nodeId> <version> ONLINE
-   ```
-
-2. **حساب ZeroTier Central** (مجاني) على [my.zerotier.com](https://my.zerotier.com)
-   - اذهب إلى **Account → API Access Tokens → New Token**
-   - احفظ الـ token (ما تقدر ترجع تشوفه مرة ثانية)
-
-3. **.NET 8 Runtime** (أو أحدث) — [تنزيل](https://dotnet.microsoft.com/download/dotnet/8.0)
-
-4. **Rocket League** — Steam أو Epic
+### الحصول على ZeroTier API Token
+1. سجّل دخول على [my.zerotier.com](https://my.zerotier.com)
+2. **Account** → **API Access Tokens** → **New Token**
+3. احفظ الـ token — لن تراه مرة ثانية
 
 ---
 
-## تشغيل المشروع (Development)
+## التشغيل السريع (Development)
 
 ```powershell
-# 1. شغّل السيرفر (نافذة PowerShell منفصلة)
+# نافذة 1 — السيرفر
 cd src\PresenceServer
 dotnet run
 
-# 2. شغّل التطبيق (نافذة PowerShell أخرى)
+# نافذة 2 — التطبيق
 cd src\LauncherApp
 dotnet run
 ```
 
-> للعب مع صاحبك: وجّه PresenceServer لسيرفر عام (Render، Fly.io، إلخ)
-> ثم غيّر `ServerUrl` في `PresenceClient.cs` ليشير للسيرفر المنشور.
+---
+
+## النشر على الإنترنت (Render.com — مجاني)
+
+### 1. ارفع المشروع على GitHub
+```bash
+git remote add origin https://github.com/USERNAME/RocketLaunch.git
+git push -u origin master
+```
+
+### 2. انشر PresenceServer
+1. سجّل دخول على [render.com](https://render.com)
+2. **New** → **Web Service** → **Deploy from Git**
+3. اختر الـ repo → Render يكتشف `render.yaml` تلقائياً
+4. انتظر الـ deploy (2-3 دقائق) → ستحصل على URL مثل:
+   ```
+   https://rocketlaunch-presence.onrender.com
+   ```
+
+### 3. وجّه التطبيق للسيرفر
+في جهاز **كل** مستخدم، اضبط متغير البيئة:
+```powershell
+# PowerShell (دائم)
+[System.Environment]::SetEnvironmentVariable("ROCKETLAUNCH_SERVER",
+    "https://rocketlaunch-presence.onrender.com",
+    "User")
+```
+> **أو**: الـ installer يسألك عن هذا تلقائياً عند التثبيت.
 
 ---
 
-## خطوات الاستخدام
+## بناء الـ Installer
 
-### أول مرة فقط:
-1. افتح التطبيق → سيظهر مربع "ZeroTier API Token"
-2. الصق الـ token من my.zerotier.com → اضغط **Save**
-3. تبادل "Friend Code" مع صاحبك (يظهر في الزاوية العلوية اليمنى)
-4. كلاكما يضيف كود الثاني في حقل "Add Friend"
+```powershell
+# publish فقط (ينتج LauncherApp.exe في installer\publish)
+.\build-release.ps1
 
-### كل جلسة:
-| الخطوة | أنت (Host) | صاحبك (Guest) |
-|--------|-----------|--------------|
-| 1 | اضغط **🔴 Host Game** | ينتظر الدعوة |
-| 2 | اضغط **Invite** بجانب اسم صاحبك | — |
-| 3 | — | يضغط **Yes** على نافذة الدعوة |
-| 4 | اضغط **🎮 Launch Rocket League** | اضغط **🎮 Launch Rocket League** |
-| 5 | داخل اللعبة: Extras → Custom Training → Workshop, أو Multiplayer → LAN | داخل اللعبة: Multiplayer → LAN → يشوف مبارياتك |
+# publish + installer (يحتاج Inno Setup 6 مثبت)
+.\build-release.ps1 -BuildInstaller
+```
+
+### تثبيت Inno Setup (مرة واحدة)
+```powershell
+# عبر Chocolatey
+choco install innosetup
+
+# أو يدوياً من
+# https://jrsoftware.org/isdl.php
+```
+
+---
+
+## نشر إصدار جديد تلقائياً (GitHub Actions)
+
+```bash
+# أي commit بعدها push لـ tag يبني ويرفع الـ installer تلقائياً
+git tag 1.0.1
+git push origin 1.0.1
+```
+
+سيقوم GitHub Actions بـ:
+1. بناء الـ installer
+2. إنشاء GitHub Release باسم "RocketLaunch 1.0.1"
+3. رفع `RocketLaunch-Setup.exe` على الـ Release
 
 ---
 
@@ -85,41 +123,43 @@ dotnet run
 
 ```
 RocketLaunch/
+├── Dockerfile               # لنشر PresenceServer على Render/Docker
+├── render.yaml              # Render Blueprint (deploy بضغطة)
+├── build-release.ps1        # سكريبت بناء الـ exe والـ installer
+├── .github/workflows/
+│   └── release.yml          # CI/CD — ينشر تلقائياً عند push tag
+├── installer/
+│   └── RocketLaunch.iss     # Inno Setup script
 └── src/
-    ├── PresenceServer/          # ASP.NET Core + SignalR
-    │   ├── Hubs/
-    │   │   └── PresenceHub.cs   # من أونلاين، تمرير الدعوات
-    │   └── Program.cs
-    │
-    └── LauncherApp/             # WPF (.NET 8)
+    ├── PresenceServer/      # ASP.NET Core + SignalR
+    │   ├── Hubs/PresenceHub.cs
+    │   └── Program.cs       # يقرأ PORT من env var
+    └── LauncherApp/         # WPF (.NET 8)
         ├── Services/
-        │   ├── ZeroTierService.cs     # إنشاء/انضمام شبكات ZeroTier
-        │   ├── GameLauncherService.cs # اكتشاف وتشغيل Rocket League
-        │   ├── PresenceClient.cs      # SignalR client
-        │   └── LocalProfile.cs        # حفظ الإعدادات محليًا
-        ├── Converters/
-        │   ├── OnlineToColorConverter.cs
-        │   └── BoolToVisibilityConverter.cs
-        ├── InputDialog.cs       # WPF input dialog مخصص
-        ├── MainWindow.xaml      # الواجهة
-        └── MainWindow.xaml.cs   # المنطق
+        │   ├── ZeroTierService.cs      # إنشاء/انضمام شبكات ZeroTier
+        │   ├── GameLauncherService.cs  # اكتشاف وتشغيل Rocket League
+        │   ├── PresenceClient.cs       # SignalR client (يقرأ ROCKETLAUNCH_SERVER)
+        │   ├── LocalProfile.cs         # حفظ الإعدادات محلياً
+        │   └── UpdateService.cs        # تحديث تلقائي من GitHub Releases
+        └── MainWindow.xaml(.cs)        # الواجهة الرئيسية
 ```
 
 ---
 
 ## المراحل
 
-| المرحلة | الحالة | الوصف |
-|---------|--------|-------|
-| 1 | ✅ مكتملة | Presence server + friend list + invites |
-| 2 | ✅ مكتملة | ZeroTier virtual LAN (auto create/join) |
-| 3 | ✅ مكتملة | Rocket League auto-detection & launch |
-| 4 | 🔜 | Hosted PresenceServer + installer (MSIX) |
+| # | الحالة | الوصف |
+|---|--------|-------|
+| 1 | ✅ | Presence server + friend list + invites |
+| 2 | ✅ | ZeroTier virtual LAN (auto create/join/authorize) |
+| 3 | ✅ | Rocket League detection & launch (Epic + Steam) |
+| 4 | ✅ | Dockerfile + Render deploy + installer + auto-update + CI/CD |
 
 ---
 
 ## ملاحظات تقنية
 
-- **ZeroTier**: الشبكة الافتراضية تعمل على مستوى Layer 2 (Ethernet)، مما يجعل الجهازين يظهران كأنهما على نفس الشبكة المحلية حرفيًا — هذا ما تحتاجه Rocket League لـ LAN discovery.
-- **Auto-authorization**: عند الانضمام، السيرفر (Host) يستطلع Central API كل 5 ثواني ويوافق على الأجهزة الجديدة تلقائيًا — لا حاجة لتسجيل دخول يدوي في my.zerotier.com.
-- **EAC**: التطبيق لا يحقن نفسه في العملية، فقط يشغل اللعبة عبر Steam/Epic URI — آمن من Easy Anti-Cheat.
+- **ZeroTier Layer 2**: الشبكة الافتراضية تعمل على مستوى Ethernet — الجهازان يظهران كأنهما على نفس شبكة محلية حرفياً.
+- **Auto-authorize**: الـ Host يستطلع Central API كل 5 ثواني ويوافق على أجهزة الـ Guests تلقائياً.
+- **EAC Safe**: التطبيق يشغّل اللعبة عبر Steam/Epic URI فقط — لا حقن في العملية.
+- **ROCKETLAUNCH_SERVER**: يُقرأ عند كل تشغيل — غيّر قيمته ويُطبّق فوراً بدون إعادة بناء.

@@ -10,11 +10,17 @@ namespace LauncherApp.Services;
 /// </summary>
 public sealed class PresenceClient : IAsyncDisposable
 {
-    // TODO: point this at your deployed server once you have one.
-    // For now: run PresenceServer locally (F5 in Visual Studio, or
-    // `dotnet run` from src/PresenceServer) and both launcher instances
-    // on your machine will find each other here.
-    private const string ServerUrl = "http://localhost:5000/presenceHub";
+    // Priority order for the server URL:
+    //   1. ROCKETLAUNCH_SERVER environment variable  (set by user / installer)
+    //   2. localhost:5000                             (local development fallback)
+    //
+    // Once you deploy PresenceServer to Render, set this env var to your
+    // Render URL, e.g.: ROCKETLAUNCH_SERVER=https://rocketlaunch-presence.onrender.com
+    private static readonly string ServerUrl =
+        (Environment.GetEnvironmentVariable("ROCKETLAUNCH_SERVER")
+         ?? "http://localhost:5000")
+        .TrimEnd('/') + "/presenceHub";
+
 
     private readonly HubConnection _connection;
 

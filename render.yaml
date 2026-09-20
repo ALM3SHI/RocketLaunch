@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: rocketlaunch-presence
+    env: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
