@@ -1,0 +1,235 @@
+<Window x:Class="LauncherApp.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:converters="clr-namespace:LauncherApp.Converters"
+        Title="RocketLaunch" Height="620" Width="400"
+        Background="#0F1117"
+        ResizeMode="CanMinimize">
+
+    <Window.Resources>
+        <converters:OnlineToColorConverter x:Key="OnlineToColorConverter"/>
+        <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
+
+        <!-- Base button style -->
+        <Style TargetType="Button">
+            <Setter Property="Background" Value="#2A2D3E"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Padding" Value="12,7"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}"
+                                CornerRadius="5"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background" Value="#3A3D52"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.4"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Accent button (Host / Join actions) -->
+        <Style x:Key="AccentButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+            <Setter Property="Background" Value="#4F6BF5"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#6B83F7"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- Green button (Start Game) -->
+        <Style x:Key="GreenButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+            <Setter Property="Background" Value="#2ECC71"/>
+            <Setter Property="Foreground" Value="#0F1117"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#27AE60"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- Danger button (Leave) -->
+        <Style x:Key="DangerButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+            <Setter Property="Background" Value="#C0392B"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#E74C3C"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style TargetType="TextBox">
+            <Setter Property="Background" Value="#1A1D27"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderBrush" Value="#2A2D3E"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="8,6"/>
+            <Setter Property="CaretBrush" Value="White"/>
+        </Style>
+
+        <Style TargetType="TextBlock">
+            <Setter Property="Foreground" Value="#C8CAD4"/>
+        </Style>
+    </Window.Resources>
+
+    <DockPanel Margin="16">
+
+        <!-- ═══════════════════════════════════════ TOP: Identity -->
+        <StackPanel DockPanel.Dock="Top" Margin="0,0,0,14">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0">
+                    <TextBlock Text="🚀 RocketLaunch" FontSize="20" FontWeight="Bold" Foreground="White"/>
+                    <TextBlock x:Name="ConnectionStatusText" Text="Connecting..." FontSize="11" Foreground="#8A8D9A" Margin="0,2,0,0"/>
+                </StackPanel>
+                <StackPanel Grid.Column="1" VerticalAlignment="Top">
+                    <TextBlock Text="Your code" FontSize="10" Foreground="#8A8D9A" HorizontalAlignment="Right"/>
+                    <TextBlock x:Name="MyFriendCodeText" FontSize="15" FontWeight="Bold" Foreground="#4F6BF5" HorizontalAlignment="Right"/>
+                </StackPanel>
+            </Grid>
+        </StackPanel>
+
+        <!-- ═══════════════════════════════════════ BOTTOM: Add friend -->
+        <StackPanel DockPanel.Dock="Bottom" Margin="0,14,0,0">
+
+            <!-- ZeroTier token setup (shown only if not configured) -->
+            <Border x:Name="TokenSetupPanel" Background="#1A1D27" CornerRadius="8" Padding="12" Margin="0,0,0,10"
+                    Visibility="Collapsed">
+                <StackPanel>
+                    <TextBlock Text="⚙️ ZeroTier API Token" FontWeight="Bold" FontSize="12" Foreground="#F39C12" Margin="0,0,0,6"/>
+                    <TextBlock Text="Get a free token at my.zerotier.com → Account → API Access Tokens" FontSize="10" Foreground="#8A8D9A" TextWrapping="Wrap" Margin="0,0,0,8"/>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBox x:Name="ApiTokenBox" Grid.Column="0" Margin="0,0,6,0" Text="" FontSize="11"/>
+                        <Button Grid.Column="1" Content="Save" Click="SaveTokenButton_Click" Style="{StaticResource AccentButton}"/>
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <!-- Add friend row -->
+            <TextBlock Text="Add Friend by Code" FontSize="11" Foreground="#8A8D9A" Margin="0,0,0,4"/>
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBox x:Name="AddFriendCodeBox" Grid.Column="0" Margin="0,0,6,0" FontSize="12"/>
+                <Button x:Name="AddFriendButton" Grid.Column="1" Content="Add" Click="AddFriendButton_Click"/>
+            </Grid>
+        </StackPanel>
+
+        <!-- ═══════════════════════════════════════ MIDDLE: Session + Friends -->
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+            <StackPanel>
+
+                <!-- ─── Active session panel ─── -->
+                <Border x:Name="SessionPanel" Background="#141724" CornerRadius="10"
+                        Padding="14" Margin="0,0,0,14" Visibility="Collapsed">
+                    <StackPanel>
+                        <TextBlock x:Name="SessionTitleText" Text="Session Active"
+                                   FontSize="13" FontWeight="Bold" Foreground="White" Margin="0,0,0,6"/>
+                        <TextBlock x:Name="SessionNetworkIdText" FontSize="10" Foreground="#8A8D9A"/>
+                        <TextBlock x:Name="SessionIpText" FontSize="10" Foreground="#2ECC71" Margin="0,2,0,10"/>
+
+                        <!-- Status / progress text -->
+                        <TextBlock x:Name="SessionStatusText" FontSize="11" Foreground="#F39C12"
+                                   TextWrapping="Wrap" Margin="0,0,0,10"/>
+
+                        <!-- Action buttons -->
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="8"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Button x:Name="LaunchGameButton" Grid.Column="0"
+                                    Content="🎮 Launch Rocket League"
+                                    Style="{StaticResource GreenButton}"
+                                    Click="LaunchGameButton_Click"/>
+                            <Button x:Name="LeaveNetworkButton" Grid.Column="2"
+                                    Content="Leave Session"
+                                    Style="{StaticResource DangerButton}"
+                                    Click="LeaveNetworkButton_Click"/>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <!-- ─── Host / Join row (no active session) ─── -->
+                <Grid x:Name="HostJoinRow" Margin="0,0,0,14">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="8"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <Button Grid.Column="0" Content="🔴 Host Game"
+                            Style="{StaticResource AccentButton}"
+                            Click="HostGameButton_Click"
+                            x:Name="HostGameButton"/>
+                    <!-- Join is triggered by accepting an invite; this manual fallback takes a network ID -->
+                    <Button Grid.Column="2" Content="🔵 Join by ID"
+                            Click="JoinByIdButton_Click"
+                            x:Name="JoinByIdButton"/>
+                </Grid>
+
+                <!-- ─── Friends list ─── -->
+                <TextBlock Text="FRIENDS" FontSize="10" Foreground="#5A5D6E" Margin="0,0,0,8" FontWeight="Bold"/>
+                <ItemsControl x:Name="FriendsList">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border Background="#161924" CornerRadius="8" Padding="12" Margin="0,0,0,6">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <Ellipse Grid.Column="0" Width="9" Height="9" Margin="0,0,10,0" VerticalAlignment="Center"
+                                             Fill="{Binding IsOnline, Converter={StaticResource OnlineToColorConverter}}"/>
+
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold" Foreground="White"/>
+                                        <TextBlock Text="{Binding FriendCode}" FontSize="10" Foreground="#5A5D6E"/>
+                                    </StackPanel>
+
+                                    <Button Grid.Column="2" Content="Invite" VerticalAlignment="Center"
+                                            IsEnabled="{Binding IsOnline}"
+                                            Click="InviteFriendButton_Click" Tag="{Binding FriendCode}"
+                                            Style="{StaticResource AccentButton}"/>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <!-- Empty state -->
+                <TextBlock x:Name="EmptyFriendsHint"
+                           Text="No friends yet — share your code above and add theirs."
+                           FontSize="11" Foreground="#4A4D5E" HorizontalAlignment="Center"
+                           Margin="0,20,0,0" TextWrapping="Wrap" TextAlignment="Center"
+                           Visibility="Visible"/>
+
+            </StackPanel>
+        </ScrollViewer>
+
+    </DockPanel>
+</Window>
