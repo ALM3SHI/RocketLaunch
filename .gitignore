@@ -2,3 +2,7 @@ bin/
 obj/
 *.user
 .vs/
+
+# Build output — belongs in GitHub Releases, not tracked in git
+installer/publish/
+installer/Output/
