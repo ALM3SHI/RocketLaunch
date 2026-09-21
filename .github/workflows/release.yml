@@ -27,7 +27,7 @@ jobs:
             --configuration Release `
             --runtime win-x64 `
             --self-contained true `
-            --output installer/publish `
+            --output "${{ github.workspace }}\installer\publish" `
             -p:PublishSingleFile=true `
             -p:IncludeNativeLibrariesForSelfExtract=true `
             -p:EnableCompressionInSingleFile=true `
@@ -38,9 +38,21 @@ jobs:
         run: choco install innosetup --yes --no-progress
 
       - name: Build Installer
-        run: |
-          & "C:\Program Files (x86)\Inno Setup 6\iscc.exe" installer/RocketLaunch.iss
         shell: pwsh
+        run: |
+          $publishDir = "${{ github.workspace }}\installer\publish"
+          $outputDir  = "${{ github.workspace }}\installer\Output"
+          $issFile    = "${{ github.workspace }}\installer\RocketLaunch.iss"
+
+          Write-Host "Publish dir: $publishDir"
+          Get-ChildItem $publishDir | Select-Object Name, Length
+
+          & "C:\Program Files (x86)\Inno Setup 6\iscc.exe" `
+              /DPublishDir="$publishDir" `
+              /DOutputDir="$outputDir" `
+              $issFile
+
+          if ($LASTEXITCODE -ne 0) { exit 1 }
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2

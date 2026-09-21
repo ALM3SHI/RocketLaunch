@@ -1,12 +1,21 @@
 ; RocketLaunch Inno Setup Script
-; Build: iscc installer\RocketLaunch.iss
-; Output: installer\Output\RocketLaunch-Setup.exe
+; Build locally: iscc installer\RocketLaunch.iss
+; Build in CI:   iscc /DPublishDir="C:\abs\path\publish" /DOutputDir="C:\abs\path\Output" installer\RocketLaunch.iss
 
 #define AppName    "RocketLaunch"
 #define AppVersion "1.0.0"
 #define AppPublisher "RocketLaunch"
-#define AppURL     "https://github.com/YOUR_GITHUB_USERNAME/RocketLaunch"
+#define AppURL     "https://github.com/ALM3SHI/RocketLaunch"
 #define AppExeName "LauncherApp.exe"
+
+; PublishDir and OutputDir can be overridden via /D on the command line (used by CI).
+; Defaults to relative paths for local builds.
+#ifndef PublishDir
+  #define PublishDir "..\publish"
+#endif
+#ifndef OutputDir
+  #define OutputDir "Output"
+#endif
 
 [Setup]
 AppId={{A7F3C241-8B5D-4E2A-9C1F-3D6E7B8A0F12}
@@ -19,8 +28,7 @@ AppUpdatesURL={#AppURL}/releases
 DefaultDirName={autopf}\{#AppName}
 DefaultGroupName={#AppName}
 AllowNoIcons=yes
-; Single file output for GitHub Releases upload
-OutputDir=Output
+OutputDir={#OutputDir}
 OutputBaseFilename=RocketLaunch-Setup
 Compression=lzma2/ultra64
 SolidCompression=yes
@@ -39,8 +47,8 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 Name: "startupicon"; Description: "Start RocketLaunch with Windows"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 
 [Files]
-; The published single-file executable + any remaining files
-Source: "..\publish\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+; PublishDir is set via /D in CI, or defaults to ..\publish for local builds
+Source: "{#PublishDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
 Name: "{group}\{#AppName}"; Filename: "{app}\{#AppExeName}"
