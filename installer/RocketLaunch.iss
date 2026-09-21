@@ -85,6 +85,8 @@ begin
 end;
 
 function InitializeSetup(): Boolean;
+var
+  ErrCode: Integer;
 begin
   if not IsDotNet8Installed() then
   begin
@@ -95,7 +97,7 @@ begin
     begin
       ShellExec('open',
         'https://dotnet.microsoft.com/download/dotnet/8.0',
-        '', '', SW_SHOWNORMAL, ewNoWait, ErrorCode);
+        '', '', SW_SHOWNORMAL, ewNoWait, ErrCode);
     end;
     Result := False;
   end else
@@ -104,6 +106,8 @@ end;
 
 // ── Server URL wizard page ────────────────────────────────────
 procedure InitializeWizard();
+var
+  Existing: String;
 begin
   ServerUrlPage := CreateInputQueryPage(
     wpSelectDir,
@@ -115,11 +119,10 @@ begin
 
   ServerUrlPage.Add('Server URL:', False);
 
-  // Pre-fill with existing value if upgrading, else the default.
-  var existing := '';
-  RegQueryStringValue(HKCU, 'Environment', 'ROCKETLAUNCH_SERVER', existing);
-  if existing = '' then existing := 'http://localhost:5000';
-  ServerUrlPage.Values[0] := existing;
+  Existing := '';
+  RegQueryStringValue(HKCU, 'Environment', 'ROCKETLAUNCH_SERVER', Existing);
+  if Existing = '' then Existing := 'http://localhost:5000';
+  ServerUrlPage.Values[0] := Existing;
 end;
 
 function NextButtonClick(CurPageID: Integer): Boolean;
