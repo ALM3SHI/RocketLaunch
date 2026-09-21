@@ -202,9 +202,9 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            SessionStatusText.Text = $"Error: {ex.Message}";
             Dispatcher.Invoke(() =>
             {
+                MessageBox.Show($"Failed to host session:\n\n{ex.Message}", "RocketLaunch Error", MessageBoxButton.OK, MessageBoxImage.Error);
                 HostJoinRow.Visibility  = Visibility.Visible;
                 SessionPanel.Visibility = Visibility.Collapsed;
                 HostGameButton.IsEnabled = true;
@@ -335,11 +335,14 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            SessionStatusText.Text = $"Error: {ex.Message}";
-            HostJoinRow.Visibility  = Visibility.Visible;
-            SessionPanel.Visibility = Visibility.Collapsed;
-            HostGameButton.IsEnabled = true;
-            JoinByIdButton.IsEnabled = true;
+            Dispatcher.Invoke(() =>
+            {
+                MessageBox.Show($"Failed to join session:\n\n{ex.Message}", "RocketLaunch Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                HostJoinRow.Visibility  = Visibility.Visible;
+                SessionPanel.Visibility = Visibility.Collapsed;
+                HostGameButton.IsEnabled = true;
+                JoinByIdButton.IsEnabled = true;
+            });
         }
     }
 

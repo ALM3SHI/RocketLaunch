@@ -54,14 +54,24 @@ public sealed class ZeroTierService
         progress?.Report("Creating ZeroTier network...");
 
         // POST /network — creates a new network under the token's account.
+        // Randomize the third octet (0-255) so multiple networks don't conflict
+        var subnet = new Random().Next(1, 255);
+        
         var body = new
         {
             name = networkName,
             config = new
             {
-                // v4AssignMode = "zt" lets ZeroTier auto-assign 10.x.x.x IPs.
                 v4AssignMode = new { zt = true },
-                @private = true          // invite-only, not open
+                @private = true,
+                routes = new[]
+                {
+                    new { target = $"10.147.{subnet}.0/24", via = (string?)null }
+                },
+                ipAssignmentPools = new[]
+                {
+                    new { ipRangeStart = $"10.147.{subnet}.1", ipRangeEnd = $"10.147.{subnet}.254" }
+                }
             }
         };
 
@@ -153,23 +163,39 @@ public sealed class ZeroTierService
     // Diagnostics
     // -----------------------------------------------------------------------
 
-    /// <summary>Returns true when the zerotier-one service is reachable.</summary>
+    /// <summary>
+    /// Returns true when the ZeroTier One Windows service is running.
+    /// Uses ServiceController (no admin required) instead of zerotier-cli.
+    /// </summary>
     public static bool IsZeroTierRunning()
     {
+        // Method 1: check the Windows service (no admin needed)
         try
         {
-            var result = RunCliSync("info");
-            return result.ExitCode == 0;
+            using var sc = new System.ServiceProcess.ServiceController("ZeroTierOneService");
+            return sc.Status == System.ServiceProcess.ServiceControllerStatus.Running;
         }
-        catch
+        catch { }
+
+        // Method 2: check if the process is running
+        try
         {
-            return false;
+            return System.Diagnostics.Process
+                .GetProcessesByName("ZeroTier One").Length > 0
+                || System.Diagnostics.Process
+                .GetProcessesByName("zerotier-one_x64").Length > 0;
         }
+        catch { }
+
+        return false;
     }
 
     // -----------------------------------------------------------------------
     // Internal helpers
     // -----------------------------------------------------------------------
+
+    private static readonly string ZeroTierExePath = 
+        @"C:\ProgramData\ZeroTier\One\zerotier-one_x64.exe";
 
     private async Task CliJoinAsync(string networkId)
     {
@@ -177,7 +203,7 @@ public sealed class ZeroTierService
         if (result.ExitCode != 0)
         {
             throw new InvalidOperationException(
-                $"zerotier-cli join failed (exit {result.ExitCode}): {result.Stderr}");
+                $"ZeroTier join failed (exit {result.ExitCode}): {result.Stderr}");
         }
     }
 
@@ -189,7 +215,7 @@ public sealed class ZeroTierService
     {
         // First get our own node ID from the CLI so we can look up our membership.
         var info = await RunCliAsync("info");
-        // "zerotier-cli info" output: "200 info <nodeId> <version> <status>"
+        // Output: "200 info <nodeId> <version> <status>"
         var parts = info.Stdout.Split(' ', StringSplitOptions.RemoveEmptyEntries);
         if (parts.Length < 3)
             throw new InvalidOperationException("Could not read ZeroTier node ID.");
@@ -237,7 +263,33 @@ public sealed class ZeroTierService
 
     private async Task AuthorizeMemberAsync(string networkId, string nodeId)
     {
-        var patch = new { config = new { authorized = true } };
+        string? ipToAssign = null;
+        try
+        {
+            // Fetch the network's subnet to assign an IP explicitly
+            var netResp = await _http.GetAsync($"{CentralBase}/network/{networkId}");
+            if (netResp.IsSuccessStatusCode)
+            {
+                var netJson = JsonNode.Parse(await netResp.Content.ReadAsStringAsync())!;
+                var ipStart = netJson["config"]?["ipAssignmentPools"]?[0]?["ipRangeStart"]?.GetValue<string>();
+                if (!string.IsNullOrEmpty(ipStart))
+                {
+                    var parts = ipStart.Split('.');
+                    if (parts.Length == 4)
+                    {
+                        var baseIp = $"{parts[0]}.{parts[1]}.{parts[2]}";
+                        // Pick a random IP to avoid collisions (since it's a tiny LAN, collision chance is ~0)
+                        ipToAssign = $"{baseIp}.{new Random().Next(2, 250)}";
+                    }
+                }
+            }
+        }
+        catch { /* fallback to auto-assign */ }
+
+        object patch = ipToAssign != null
+            ? new { config = new { authorized = true, ipAssignments = new[] { ipToAssign } } }
+            : new { config = new { authorized = true } };
+
         var resp = await _http.PostAsync(
             $"{CentralBase}/network/{networkId}/member/{nodeId}",
             new StringContent(JsonSerializer.Serialize(patch), System.Text.Encoding.UTF8, "application/json"));
@@ -246,12 +298,15 @@ public sealed class ZeroTierService
 
     private static async Task<(int ExitCode, string Stdout, string Stderr)> RunCliAsync(params string[] args)
     {
+        // On Windows, the CLI is just the main executable run with "-q"
+        var allArgs = "-q " + string.Join(" ", args);
+        
         using var proc = new Process
         {
             StartInfo = new ProcessStartInfo
             {
-                FileName = "zerotier-cli",
-                Arguments = string.Join(" ", args),
+                FileName = ZeroTierExePath,
+                Arguments = allArgs,
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
                 UseShellExecute = false,
@@ -265,21 +320,5 @@ public sealed class ZeroTierService
         await proc.WaitForExitAsync();
 
         return (proc.ExitCode, stdout.Trim(), stderr.Trim());
-    }
-
-    private static (int ExitCode, string Stdout) RunCliSync(params string[] args)
-    {
-        using var proc = Process.Start(new ProcessStartInfo
-        {
-            FileName = "zerotier-cli",
-            Arguments = string.Join(" ", args),
-            RedirectStandardOutput = true,
-            UseShellExecute = false,
-            CreateNoWindow = true
-        })!;
-
-        var stdout = proc.StandardOutput.ReadToEnd().Trim();
-        proc.WaitForExit();
-        return (proc.ExitCode, stdout);
     }
 }
