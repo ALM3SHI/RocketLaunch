@@ -17,7 +17,7 @@ namespace LauncherApp.Services;
 public sealed class UpdateService
 {
     // Change these two strings to your own GitHub repo once you push.
-    private const string GitHubOwner = "YOUR_GITHUB_USERNAME";
+    private const string GitHubOwner = "ALM3SHI";
     private const string GitHubRepo  = "RocketLaunch";
 
     // Bump this with every release.
